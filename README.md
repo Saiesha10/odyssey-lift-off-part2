@@ -105,7 +105,6 @@ const server = new ApolloServer({
 * `dataSources()` is called per request to create instances.
 * `context` object is shared across resolvers (useful for auth).
 
----
 
 7. Error Handling
 
