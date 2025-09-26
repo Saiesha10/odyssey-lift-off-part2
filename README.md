@@ -85,8 +85,6 @@ Define a data source `TrackAPI` that extends `RESTDataSource` with methods like 
   * `args` (`{ id }`) are used to filter or fetch specific data.
   * Asynchronous operations are handled naturally with Promises.
 
----
-
 6. Apollo Server Setup
 
 Resolvers, schema, and data sources are combined in `ApolloServer`:
