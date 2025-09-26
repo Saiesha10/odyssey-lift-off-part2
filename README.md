@@ -1,35 +1,134 @@
 # Odyssey Lift-off II: Resolvers
 
-Welcome to the companion app of Odyssey Lift-off II! You can [find the course lessons and instructions on Odyssey](https://odyssey.apollographql.com/lift-off-part2), Apollo's learning platform.
 
-You can [preview the completed demo app here](https://lift-off-client-demo.netlify.app/).
+1. Journey of a GraphQL Query
 
-## How to use this repo
+* A GraphQL query follows this flow:
 
-The course will walk you step by step on how to implement the features you see in the demo app. This codebase is the starting point of your journey!
+  1. **Parsing & Validation** → checked against the schema.
+  2. **Execution** → each requested field is matched with a resolver.
+  3. **Resolvers** fetch or compute data (from DB, REST APIs, etc.).
+  4. **Response Assembly** → collected results are returned as JSON.
+* Resolvers act as the **bridge between schema and actual data**.
 
-There are 3 main folders:
+2. Resolver Functions
 
-- `server`: The starting point of our GraphQL server.
-- `client`: The starting point of our React application.
-- `final`: The final stage of both the server and client folders, with all of the steps and code completed!
+* General form of a resolver:
 
-To get started:
+  ```js
+  fieldName(parent, args, context, info) {
+    // logic to fetch/return data
+  }
+  ```
 
-1. Navigate to the `server` folder.
-1. Run `npm install`.
-1. Run `npm start`.
+* Parameters:
 
-This will start the GraphQL API server.
+  * **parent** → result from previous resolver (or root object).
+  * **args** → arguments passed in the query (e.g., `id`, `filter`).
+  * **context** → shared object across resolvers (auth, data sources).
+  * **info** → query metadata (field name, AST, path).
 
-In another Terminal window,
+* Resolvers can return:
 
-1. Navigate to the `client` folder.
-1. Run `npm install`.
-1. Run `npm start`.
+  * Primitive values (string, int, boolean)
+  * Objects
+  * Promises (async operations)
+  * Nested fields resolved via other resolvers
 
-This will open up `localhost:3000` in your web browser.
+3. Default Resolution Behavior
 
-## Getting Help
+* If no resolver is provided for a field:
 
-For any issues or problems concerning the course content, please refer to the [Odyssey topic in our community forums](https://community.apollographql.com/tags/c/help/6/odyssey).
+  * GraphQL uses a **default resolver**.
+  * It simply looks for a property on the **parent object** with the same field name.
+
+Example:
+If `track.title` exists in the returned object, no custom resolver is needed for `title`.
+
+Custom resolvers are required when:
+
+* Field names differ from backend data fields.
+* Data needs transformation.
+* Field requires fetching from another data source.
+
+4. RESTDataSource Integration
+
+* Apollo provides **`RESTDataSource`** class for connecting GraphQL to REST APIs.
+* Benefits:
+
+  * Built-in **caching & deduplication**.
+  * Cleaner abstraction (no raw `fetch/axios` in resolvers).
+  * Simple methods like `this.get()`, `this.post()`.
+  
+Example:
+Define a data source `TrackAPI` that extends `RESTDataSource` with methods like `getAllTracks()`, `getTrackById(id)`.
+
+5. Query Resolvers in Practice
+
+* Schema fields map directly to resolvers:
+
+  ```js
+  const resolvers = {
+    Query: {
+      tracksForHome: (_, __, { dataSources }) =>
+        dataSources.trackAPI.getAllTracks(),
+
+      track: (_, { id }, { dataSources }) =>
+        dataSources.trackAPI.getTrackById(id),
+    }
+  };
+  ```
+
+* Points to note:
+
+  * `dataSources.trackAPI` is the RESTDataSource instance.
+  * `args` (`{ id }`) are used to filter or fetch specific data.
+  * Asynchronous operations are handled naturally with Promises.
+
+---
+
+6. Apollo Server Setup
+
+Resolvers, schema, and data sources are combined in `ApolloServer`:
+
+```js
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  dataSources: () => ({
+    trackAPI: new TrackAPI(),
+  }),
+  context: ({ req }) => ({
+    // auth, user info, etc.
+  }),
+});
+```
+
+* `dataSources()` is called per request to create instances.
+* `context` object is shared across resolvers (useful for auth).
+
+---
+
+7. Error Handling
+
+* Common sources of errors:
+
+  * Throwing errors inside resolvers.
+  * Returning `null` for non-nullable schema fields.
+  * REST API failures (network issues).
+  * Parent object missing required property for default resolution.
+
+* Apollo captures errors and includes them in the response under an `errors` field.
+
+* Can be customized with `try/catch` in resolvers or by formatting errors in server config.
+
+
+8. Summary
+
+* Resolvers define **how schema fields map to real data**.
+* Default resolvers handle direct property lookups, while custom resolvers handle transformations, external API calls, or relationships.
+* `RESTDataSource` simplifies integration with REST APIs.
+* Apollo Server ties together schema, resolvers, and data sources.
+* Error handling is essential for stable query execution.
+
+
